@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>میکسر آهنگ‌ها</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;900&display=swap');
+
+  :root{
+    --bg: #14151a;
+    --panel: #1c1e26;
+    --panel-2: #23262f;
+    --line: #33363f;
+    --text: #eeeae2;
+    --muted: #8b8e97;
+    --deck-a: #ffb443;
+    --deck-b: #4cc9c0;
+    --danger: #e4573d;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Vazirmatn', system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 28px 16px 40px;
+  }
+
+  .app{ max-width: 640px; margin: 0 auto; }
+
+  header{ margin-bottom: 22px; }
+  header h1{ font-size: 26px; font-weight: 900; margin: 0; letter-spacing: -0.3px; }
+
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+
+  .dropzone{
+    border: 1.5px dashed var(--line);
+    border-radius: 12px;
+    padding: 22px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .dropzone:hover, .dropzone.drag{ border-color: var(--deck-a); background: rgba(255,180,67,0.05); }
+  .dropzone input{ display:none; }
+  .dropzone .plus{ font-size: 22px; display:block; margin-bottom: 6px; color: var(--deck-a); }
+  .dropzone .label{ font-size: 14px; color: var(--text); font-weight: 600; }
+  .dropzone .sub{ font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  .panel-title{ font-size: 12px; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+
+  .playlist{ list-style:none; margin:0; padding:0; max-height: 260px; overflow-y:auto; }
+  .playlist li{
+    display:flex; align-items:center; gap:10px; padding: 9px 8px; border-radius: 9px;
+    margin-bottom: 4px; background: transparent; border: 1px solid transparent; cursor: pointer;
+  }
+  .playlist li:hover:not(.active){ background: rgba(255,255,255,0.04); }
+  .playlist li.active{ background: var(--panel-2); border-color: var(--line); }
+  .playlist li .idx{ width: 22px; text-align:center; color: var(--muted); font-size: 12px; flex-shrink:0; }
+  .playlist li.active .idx{ color: var(--deck-a); font-weight:700; }
+  .playlist li .name{ flex:1; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .playlist li .row-btn{
+    background:none; border:none; color: var(--muted); cursor:pointer;
+    font-size: 15px; padding: 4px 6px; border-radius: 6px; line-height:1;
+  }
+  .playlist li .row-btn:hover{ color: var(--text); background: rgba(255,255,255,0.08); }
+  .empty-msg{ color: var(--muted); font-size: 13px; text-align:center; padding: 10px; }
+
+  .decks{ display:flex; align-items:center; gap: 14px; }
+  .deck{ flex:1; min-width:0; }
+  .deck .deck-label{ font-size: 11px; font-weight: 700; letter-spacing: 0.4px; margin-bottom: 6px; }
+  .deck.a .deck-label{ color: var(--deck-a); }
+  .deck.b .deck-label{ color: var(--deck-b); }
+  .deck .track-name{
+    font-size: 13px; font-weight: 600; white-space: nowrap; overflow:hidden;
+    text-overflow: ellipsis; margin-bottom: 8px; min-height: 18px;
+  }
+  .bar-track{ height: 5px; border-radius: 3px; background: var(--panel-2); overflow:hidden; }
+  .deck.a .bar-fill{ background: var(--deck-a); }
+  .deck.b .bar-fill{ background: var(--deck-b); }
+  .bar-fill{ height:100%; width:0%; border-radius: 3px; }
+
+  .crossfader-wrap{ padding: 4px 2px; width: 74px; flex-shrink:0; }
+  .crossfader-track{
+    position:relative; height: 5px; border-radius: 3px;
+    background: linear-gradient(90deg, var(--deck-a), var(--deck-b)); margin-top: 22px;
+  }
+  .crossfader-dot{
+    position:absolute; top: 50%; width: 14px; height:14px; border-radius:50%;
+    background: var(--text); border: 2px solid var(--bg); transform: translate(50%, -50%);
+    right: 50%; transition: right .05s linear; box-shadow: 0 0 0 1px var(--line);
+  }
+  .crossfader-caption{ text-align:center; font-size: 10px; color: var(--muted); margin-top: 8px; }
+
+  .transport-row{ display:flex; align-items:center; gap: 8px; flex-wrap: wrap; }
+  .btn{
+    border: none; border-radius: 10px; padding: 11px 16px; font-family: inherit;
+    font-size: 13.5px; font-weight: 700; cursor: pointer; white-space:nowrap;
+  }
+  .btn:disabled{ opacity: 0.4; cursor: not-allowed; }
+  .btn-play{ background: var(--deck-a); color: #241a05; }
+  .btn-nav{ background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
+  .btn-stop{ background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
+
+  .status-line{ font-size: 12.5px; color: var(--muted); margin-top: 14px; min-height: 16px; }
+  .status-line.mixing{ color: var(--deck-b); font-weight:600; }
+
+  footer{
+    text-align:center; color: var(--muted); font-size: 12px;
+    margin-top: 26px; padding-top: 14px; border-top: 1px solid var(--line);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header><h1>میکسر آهنگ‌ها</h1></header>
+
+  <div class="panel">
+    <div class="dropzone" id="dropzone">
+      <span class="plus">＋</span>
+      <span class="label">افزودن آهنگ</span>
+      <div class="sub">فایل‌های صوتی رو بکش و رها کن، یا کلیک کن</div>
+      <input type="file" id="fileInput" accept="audio/*" multiple>
+    </div>
+  </div>
+
+  <div class="panel">
+    <p class="panel-title">لیست پخش — روی هر آهنگ بزن تا پخش بشه</p>
+    <ul class="playlist" id="playlist"></ul>
+    <div class="empty-msg" id="emptyMsg">هنوز آهنگی اضافه نشده.</div>
+  </div>
+
+  <div class="panel">
+    <p class="panel-title">دستگاه پخش</p>
+    <div class="decks">
+      <div class="deck a">
+        <div class="deck-label">دستگاه A</div>
+        <div class="track-name" id="nameA">—</div>
+        <div class="bar-track"><div class="bar-fill" id="progressA"></div></div>
+      </div>
+
+      <div class="crossfader-wrap">
+        <div class="crossfader-track"><div class="crossfader-dot" id="crossDot"></div></div>
+        <div class="crossfader-caption">میکس</div>
+      </div>
+
+      <div class="deck b">
+        <div class="deck-label">دستگاه B</div>
+        <div class="track-name" id="nameB">—</div>
+        <div class="bar-track"><div class="bar-fill" id="progressB"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="transport-row">
+      <button class="btn btn-nav" id="prevBtn">قبلی</button>
+      <button class="btn btn-play" id="playBtn" disabled>پخش</button>
+      <button class="btn btn-nav" id="nextBtn">بعدی</button>
+      <button class="btn btn-stop" id="stopBtn">توقف</button>
+    </div>
+    <div class="status-line" id="statusLine">آماده. یک آهنگ اضافه کن تا شروع کنیم.</div>
+  </div>
+
+  <div class="panel">
+    <p class="panel-title">پخش و ذخیره‌ی میکس در یک فایل</p>
+    <div class="dropzone" id="dropzoneConvert">
+      <span class="plus">＋</span>
+      <span class="label">انتخاب آهنگ (هر تعداد)</span>
+      <div class="sub">این نسخه، آهنگ‌ها رو واقعاً پخش می‌کنه و همون‌جا ضبط می‌کنه (کم‌حافظه و بدون هنگ)، پس به‌اندازه‌ی کل طول میکس زمان می‌بره</div>
+      <input type="file" id="convertInput" accept="audio/*" multiple>
+    </div>
+    <ul class="playlist" id="convertList" style="margin-top:10px;"></ul>
+    <button class="btn btn-play" id="convertBtn" disabled style="margin-top:10px; width:100%;">پخش و ذخیره‌ی میکس</button>
+    <div class="status-line" id="convertStatus"></div>
+  </div>
+
+  <footer>با تشکر از همراهی شما — برنامه‌نویس: رضا قلی‌زاده</footer>
+
+</div>
+
+<script>
+(function(){
+  const CROSSFADE_SECONDS = 6; // خودکار و ثابت، بدون نیاز به تنظیم دستی
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const playlistEl = document.getElementById('playlist');
+  const emptyMsg = document.getElementById('emptyMsg');
+  const playBtn = document.getElementById('playBtn');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const statusLine = document.getElementById('statusLine');
+  const dropzoneConvert = document.getElementById('dropzoneConvert');
+  const convertInput = document.getElementById('convertInput');
+  const convertList = document.getElementById('convertList');
+  const convertBtn = document.getElementById('convertBtn');
+  const convertStatus = document.getElementById('convertStatus');
+  const nameA = document.getElementById('nameA');
+  const nameB = document.getElementById('nameB');
+  const progressA = document.getElementById('progressA');
+  const progressB = document.getElementById('progressB');
+  const crossDot = document.getElementById('crossDot');
+
+  const persianDigits = n => String(n).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+
+  let tracks = [];
+  let uidCounter = 0;
+
+  let audioCtx = null;
+  const deckAudio = [new Audio(), new Audio()];
+  deckAudio.forEach(a => { a.preload = 'auto'; a.crossOrigin = 'anonymous'; });
+  let deckGain = [null, null];
+  let deckSource = [null, null];
+  let masterGain = null;
+
+  let currentDeck = 0;
+  let currentTrackIndex = -1;
+  let crossfading = false;
+  let isPlaying = false;
+  let rafId = null;
+
+  let isExporting = false;
+  let exportUsesMp3Flag = false;
+  let exportBackupTracks = null;
+
+  function ensureAudioGraph(){
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 1;
+    masterGain.connect(audioCtx.destination);
+    for (let i = 0; i < 2; i++){
+      deckSource[i] = audioCtx.createMediaElementSource(deckAudio[i]);
+      deckGain[i] = audioCtx.createGain();
+      deckGain[i].gain.value = 0;
+      deckSource[i].connect(deckGain[i]);
+      deckGain[i].connect(masterGain);
+    }
+  }
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => addFiles(e.target.files));
+
+  ['dragover','dragenter'].forEach(evt => {
+    dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('drag'); });
+  });
+  ['dragleave','drop'].forEach(evt => {
+    dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('drag'); });
+  });
+  dropzone.addEventListener('drop', e => {
+    if (e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+  });
+
+  function addFiles(fileList){
+    let added = false;
+    Array.from(fileList).forEach(file => {
+      if (!file.type.startsWith('audio/')) return;
+      const url = URL.createObjectURL(file);
+      const name = file.name.replace(/\.[^/.]+$/, '');
+      tracks.push({ id: uidCounter++, name, url });
+      added = true;
+    });
+    if (added){
+      renderPlaylist();
+      playBtn.disabled = false;
+      fileInput.value = '';
+    }
+  }
+
+  function renderPlaylist(){
+    playlistEl.innerHTML = '';
+    emptyMsg.style.display = tracks.length ? 'none' : 'block';
+    tracks.forEach((t, i) => {
+      const li = document.createElement('li');
+      if (i === currentTrackIndex) li.classList.add('active');
+      li.addEventListener('click', () => goToTrack(i));
+
+      const idx = document.createElement('span');
+      idx.className = 'idx';
+      idx.textContent = persianDigits(i + 1);
+
+      const nm = document.createElement('span');
+      nm.className = 'name';
+      nm.textContent = t.name;
+
+      const up = document.createElement('button');
+      up.className = 'row-btn'; up.title = 'انتقال به بالا'; up.textContent = '↑';
+      up.addEventListener('click', (e) => { e.stopPropagation(); moveTrack(i, -1); });
+
+      const down = document.createElement('button');
+      down.className = 'row-btn'; down.title = 'انتقال به پایین'; down.textContent = '↓';
+      down.addEventListener('click', (e) => { e.stopPropagation(); moveTrack(i, 1); });
+
+      const remove = document.createElement('button');
+      remove.className = 'row-btn'; remove.title = 'حذف'; remove.textContent = '×';
+      remove.addEventListener('click', (e) => { e.stopPropagation(); removeTrack(i); });
+
+      li.append(idx, nm, up, down, remove);
+      playlistEl.appendChild(li);
+    });
+  }
+
+  function moveTrack(i, dir){
+    const j = i + dir;
+    if (j < 0 || j >= tracks.length) return;
+    if (i === currentTrackIndex || j === currentTrackIndex) return;
+    [tracks[i], tracks[j]] = [tracks[j], tracks[i]];
+    renderPlaylist();
+  }
+
+  function removeTrack(i){
+    if (i === currentTrackIndex) return;
+    tracks.splice(i, 1);
+    if (i < currentTrackIndex) currentTrackIndex--;
+    renderPlaylist();
+    if (!tracks.length){ playBtn.disabled = true; }
+  }
+
+  function clearDeckHandler(deckIndex){
+    if (deckAudio[deckIndex]._handler){
+      deckAudio[deckIndex].removeEventListener('timeupdate', deckAudio[deckIndex]._handler);
+      deckAudio[deckIndex]._handler = null;
+    }
+  }
+
+  function loadTrackIntoDeck(deckIndex, trackIndex){
+    const audio = deckAudio[deckIndex];
+    clearDeckHandler(deckIndex);
+    audio.src = tracks[trackIndex].url;
+    audio.currentTime = 0;
+    deckGain[deckIndex].gain.cancelScheduledValues(audioCtx.currentTime);
+    deckGain[deckIndex].gain.setValueAtTime(0, audioCtx.currentTime);
+  }
+
+  function attachMonitor(deckIndex, trackIndex){
+    const audio = deckAudio[deckIndex];
+    const handler = () => {
+      if (!audio.duration || isNaN(audio.duration)) return;
+      const remaining = audio.duration - audio.currentTime;
+      if (!crossfading && remaining <= CROSSFADE_SECONDS && trackIndex + 1 < tracks.length){
+        crossfadeTo(deckIndex, trackIndex + 1);
+      } else if (!crossfading && remaining <= 0.4 && trackIndex + 1 >= tracks.length){
+        finishAll();
+      }
+    };
+    audio._handler = handler;
+    audio.addEventListener('timeupdate', handler);
+  }
+
+  // مسئول هر نوع جابه‌جایی با محو تدریجی: هم پایان خودکار آهنگ، هم دکمه قبلی/بعدی، هم کلیک روی لیست
+  function crossfadeTo(fromDeck, toTrackIndex){
+    if (toTrackIndex < 0 || toTrackIndex >= tracks.length) return;
+    crossfading = true;
+    const toDeck = 1 - fromDeck;
+    loadTrackIntoDeck(toDeck, toTrackIndex);
+    deckAudio[toDeck].play().catch(()=>{});
+
+    const now = audioCtx.currentTime;
+    const dur = CROSSFADE_SECONDS;
+
+    deckGain[fromDeck].gain.cancelScheduledValues(now);
+    deckGain[fromDeck].gain.setValueAtTime(deckGain[fromDeck].gain.value, now);
+    deckGain[fromDeck].gain.linearRampToValueAtTime(0, now + dur);
+
+    deckGain[toDeck].gain.cancelScheduledValues(now);
+    deckGain[toDeck].gain.setValueAtTime(0, now);
+    deckGain[toDeck].gain.linearRampToValueAtTime(1, now + dur);
+
+    statusLine.textContent = 'در حال میکس به «' + tracks[toTrackIndex].name + '»…';
+    statusLine.classList.add('mixing');
+    isPlaying = true;
+    playBtn.textContent = 'در حال پخش…';
+    startVisualLoop();
+
+    const prevDeck = fromDeck;
+    setTimeout(() => {
+      deckAudio[prevDeck].pause();
+      clearDeckHandler(prevDeck);
+      currentDeck = toDeck;
+      currentTrackIndex = toTrackIndex;
+      crossfading = false;
+      attachMonitor(toDeck, toTrackIndex);
+      renderPlaylist();
+      statusLine.textContent = 'در حال پخش: ' + tracks[toTrackIndex].name;
+      statusLine.classList.remove('mixing');
+    }, dur * 1000);
+  }
+
+  // شروع کامل از یک آهنگ مشخص (بدون محو، برای اولین پخش یا دکمه ضبط)
+  function hardStart(trackIndex){
+    ensureAudioGraph();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    deckAudio.forEach((a, i) => { a.pause(); clearDeckHandler(i); });
+    crossfading = false;
+
+    currentDeck = 0;
+    currentTrackIndex = trackIndex;
+    loadTrackIntoDeck(currentDeck, trackIndex);
+    deckGain[currentDeck].gain.cancelScheduledValues(audioCtx.currentTime);
+    deckGain[currentDeck].gain.setValueAtTime(1, audioCtx.currentTime);
+    deckAudio[currentDeck].play().catch(()=>{});
+    attachMonitor(currentDeck, trackIndex);
+
+    isPlaying = true;
+    playBtn.textContent = 'در حال پخش…';
+    statusLine.textContent = 'در حال پخش: ' + tracks[trackIndex].name;
+    statusLine.classList.remove('mixing');
+    renderPlaylist();
+    startVisualLoop();
+  }
+
+  // جابه‌جایی دستی (کلیک روی لیست، دکمه قبلی/بعدی) — همیشه با محو تدریجی
+  function goToTrack(targetIndex){
+    if (!tracks.length) return;
+    if (targetIndex < 0 || targetIndex >= tracks.length) return;
+    if (crossfading){ statusLine.textContent = 'صبر کن، میکس در حال انجامه…'; return; }
+    ensureAudioGraph();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    if (currentTrackIndex === -1 || !isPlaying){
+      // هیچی در حال پخش نبود؛ فقط آهنگ جدید را از صفر محو کن (fade-in)
+      crossfadeTo(currentDeck, targetIndex);
+    } else {
+      crossfadeTo(currentDeck, targetIndex);
+    }
+  }
+
+  function finishAll(){
+    isPlaying = false;
+    playBtn.textContent = 'پخش';
+    statusLine.textContent = 'پخش لیست تموم شد.';
+    statusLine.classList.remove('mixing');
+    if (isExporting){
+      isExporting = false;
+      convertStatus.textContent = 'در حال ذخیره‌ی فایل نهایی…';
+      finishStreamingEncoderAndSave(exportUsesMp3Flag).then(() => {
+        convertStatus.textContent = 'میکس ذخیره شد' + (exportUsesMp3Flag ? ' (mp3).' : ' (فرمت مرورگر، چون mp3 در دسترس نبود).');
+        tracks = exportBackupTracks || [];
+        currentTrackIndex = -1;
+        renderPlaylist();
+        playBtn.disabled = tracks.length === 0;
+      });
+    }
+  }
+
+  function stopAll(){
+    deckAudio.forEach((a, i) => { a.pause(); clearDeckHandler(i); });
+    if (deckGain[0]) { deckGain[0].gain.cancelScheduledValues(audioCtx.currentTime); deckGain[0].gain.setValueAtTime(0, audioCtx.currentTime); }
+    if (deckGain[1]) { deckGain[1].gain.cancelScheduledValues(audioCtx.currentTime); deckGain[1].gain.setValueAtTime(0, audioCtx.currentTime); }
+    isPlaying = false;
+    crossfading = false;
+    currentTrackIndex = -1;
+    playBtn.textContent = 'پخش';
+    statusLine.textContent = 'متوقف شد.';
+    statusLine.classList.remove('mixing');
+    renderPlaylist();
+    updateDeckLabels();
+    progressA.style.width = '0%';
+    progressB.style.width = '0%';
+    crossDot.style.right = '50%';
+
+    if (isExporting){
+      isExporting = false;
+      convertStatus.textContent = 'متوقف شد؛ در حال ذخیره‌ی همون مقدار ضبط‌شده…';
+      finishStreamingEncoderAndSave(exportUsesMp3Flag).then(() => {
+        convertStatus.textContent = 'فایل (تا همین لحظه) ذخیره شد.';
+        tracks = exportBackupTracks || [];
+        currentTrackIndex = -1;
+        renderPlaylist();
+        playBtn.disabled = tracks.length === 0;
+      });
+    }
+  }
+
+  function updateDeckLabels(){
+    const aTrack = (deckAudio[0].src && !deckAudio[0].ended) ? findTrackByUrl(deckAudio[0].src) : null;
+    const bTrack = (deckAudio[1].src && !deckAudio[1].ended) ? findTrackByUrl(deckAudio[1].src) : null;
+    nameA.textContent = aTrack ? aTrack.name : '—';
+    nameB.textContent = bTrack ? bTrack.name : '—';
+  }
+
+  function findTrackByUrl(url){
+    return tracks.find(t => url.indexOf(t.url) !== -1) || null;
+  }
+
+  function startVisualLoop(){
+    updateDeckLabels();
+    let lastUiUpdate = 0;
+    function step(ts){
+      // موقع ضبط، آپدیت مکرر رابط کاربری با کال‌بک صدا رقابت می‌کنه و باعث قطع‌وصلی می‌شه؛
+      // پس این‌جا کمتر آپدیت می‌کنیم (هر ۲۰۰ میلی‌ثانیه) و بقیه‌ی وقت رشته‌ی اصلی رو آزاد می‌ذاریم
+      if (!isExporting || !ts || ts - lastUiUpdate > 200){
+        lastUiUpdate = ts || 0;
+        updateDeckLabels();
+        if (deckAudio[0].duration) progressA.style.width = Math.min(100, (deckAudio[0].currentTime / deckAudio[0].duration) * 100) + '%';
+        if (deckAudio[1].duration) progressB.style.width = Math.min(100, (deckAudio[1].currentTime / deckAudio[1].duration) * 100) + '%';
+        if (deckGain[0] && deckGain[1]){
+          const gA = deckGain[0].gain.value;
+          const gB = deckGain[1].gain.value;
+          const total = gA + gB;
+          const pos = total > 0 ? (gB / total) : 0.5;
+          crossDot.style.right = (50 - (pos - 0.5) * 100) + '%';
+        }
+      }
+      if (isPlaying) rafId = requestAnimationFrame(step);
+    }
+    if (rafId) cancelAnimationFrame(rafId);
+    step();
+  }
+
+  // ---- تبدیل فایل‌های انتخابی به mp3 (با WAV به‌عنوان جایگزینِ همیشه‌کارِ بدون وابستگی) ----
+  let filesToConvert = [];
+  let lameLoadPromise = null;
+
+  function loadLameJs(){
+    if (lameLoadPromise) return lameLoadPromise;
+    lameLoadPromise = new Promise((resolve) => {
+      if (window.lamejs){ resolve(true); return; }
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.0/lame.all.js';
+      let done = false;
+      const finish = (ok) => { if (!done){ done = true; resolve(ok); } };
+      script.onload = () => finish(typeof window.lamejs !== 'undefined');
+      script.onerror = () => finish(false);
+      document.head.appendChild(script);
+      setTimeout(() => finish(typeof window.lamejs !== 'undefined'), 4000);
+    });
+    return lameLoadPromise;
+  }
+
+  function floatTo16BitPCM(floatArr){
+    const out = new Int16Array(floatArr.length);
+    for (let i = 0; i < floatArr.length; i++){
+      let s = Math.max(-1, Math.min(1, floatArr[i]));
+      out[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    return out;
+  }
+
+  function downloadBlob(blob, filename){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+
+  // ---- ضبط جریانی (streaming) از خروجی زنده‌ی میکسر ----
+  // به‌جای دیکود کردن همه‌ی آهنگ‌ها و ساختن یک بافر غول‌پیکر در حافظه (که روی گوشی هنگ می‌کرد)،
+  // این روش دقیقاً همون موتور پخش/کراس‌فیدِ زنده‌ی برنامه رو اجرا می‌کنه و همزمان، تکه‌تکه و
+  // پیوسته (بدون نگه‌داشتن کل آهنگ‌ها در حافظه)، خروجی رو ضبط و انکود می‌کنه.
+  //
+  // خودِ گرفتن نمونه‌های صدا روی رشته‌ی اختصاصی صوتِ مرورگر (AudioWorklet) انجام می‌شه، نه روی
+  // رشته‌ی اصلی صفحه؛ به همین خاطر هر چقدر صفحه مشغول باشه، روی صدا اثر نمی‌ذاره و خش‌خش/قطع‌وصلی
+  // پیش نمیاد. انکود mp3 (که سنگین‌تره) جدا و در پس‌زمینه، تکه‌تکه روی رشته‌ی اصلی انجام می‌شه.
+  const CAPTURE_WORKLET_CODE = `
+    class CaptureProcessor extends AudioWorkletProcessor {
+      process(inputs){
+        const input = inputs[0];
+        if (input && input.length > 0 && input[0] && input[0].length > 0){
+          const left = input[0];
+          const right = input.length > 1 ? input[1] : input[0];
+          this.port.postMessage({ left: left.slice(), right: right.slice() });
+        }
+        return true;
+      }
+    }
+    registerProcessor('capture-processor', CaptureProcessor);
+  `;
+
+  let captureWorkletLoaded = false;
+  let exportCaptureNode = null;
+  let exportScriptNode = null;
+  let exportChunks = [];
+  let exportMp3Encoder = null;
+  let exportMediaRecorder = null;
+  let exportMsDest = null;
+  let exportMime = '';
+  let pcmQueue = [];
+  let drainScheduled = false;
+
+  async function ensureCaptureWorklet(){
+    if (captureWorkletLoaded) return true;
+    if (!audioCtx.audioWorklet) return false;
+    try{
+      const blob = new Blob([CAPTURE_WORKLET_CODE], { type: 'application/javascript' });
+      const url = URL.createObjectURL(blob);
+      await audioCtx.audioWorklet.addModule(url);
+      captureWorkletLoaded = true;
+      return true;
+    }catch(err){
+      return false;
+    }
+  }
+
+  function scheduleDrain(){
+    if (drainScheduled) return;
+    drainScheduled = true;
+    setTimeout(drainQueue, 0);
+  }
+
+  function drainQueue(){
+    drainScheduled = false;
+    let processed = 0;
+    while (pcmQueue.length && processed < 40){
+      const chunk = pcmQueue.shift();
+      const l16 = floatTo16BitPCM(chunk.left);
+      const r16 = floatTo16BitPCM(chunk.right);
+      const buf = exportMp3Encoder.encodeBuffer(l16, r16);
+      if (buf && buf.length > 0) exportChunks.push(new Int8Array(buf));
+      processed++;
+    }
+    if (pcmQueue.length) scheduleDrain();
+  }
+
+  async function startStreamingEncoder(useMp3){
+    exportChunks = [];
+    pcmQueue = [];
+    if (useMp3){
+      exportMp3Encoder = new lamejs.Mp3Encoder(2, audioCtx.sampleRate, 128);
+      const workletOK = await ensureCaptureWorklet();
+      if (workletOK){
+        exportCaptureNode = new AudioWorkletNode(audioCtx, 'capture-processor');
+        exportCaptureNode.port.onmessage = (e) => { pcmQueue.push(e.data); scheduleDrain(); };
+        masterGain.connect(exportCaptureNode);
+        exportCaptureNode.connect(audioCtx.destination); // خروجیِ این نود نوشته نمی‌شه، پس صدایی تکرار نمی‌شه
+      } else {
+        // بازگشت به روش قدیمی‌تر فقط برای مرورگرهای خیلی قدیمی که AudioWorklet ندارن
+        exportScriptNode = audioCtx.createScriptProcessor(4096, 2, 2);
+        exportScriptNode.onaudioprocess = (e) => {
+          const l = e.inputBuffer.getChannelData(0).slice();
+          const r = e.inputBuffer.numberOfChannels > 1 ? e.inputBuffer.getChannelData(1).slice() : l;
+          pcmQueue.push({ left: l, right: r });
+          scheduleDrain();
+        };
+        masterGain.connect(exportScriptNode);
+        exportScriptNode.connect(audioCtx.destination);
+      }
+    } else {
+      if (!exportMsDest){
+        exportMsDest = audioCtx.createMediaStreamDestination();
+        masterGain.connect(exportMsDest);
+      }
+      const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+      exportMime = '';
+      for (const c of candidates){
+        if (window.MediaRecorder && MediaRecorder.isTypeSupported(c)){ exportMime = c; break; }
+      }
+      exportMediaRecorder = exportMime ? new MediaRecorder(exportMsDest.stream, { mimeType: exportMime }) : new MediaRecorder(exportMsDest.stream);
+      exportMediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) exportChunks.push(e.data); };
+      exportMediaRecorder.start();
+    }
+  }
+
+  function finishStreamingEncoderAndSave(useMp3){
+    return new Promise((resolve) => {
+      if (useMp3){
+        if (exportCaptureNode){
+          try{ masterGain.disconnect(exportCaptureNode); }catch(e){}
+          try{ exportCaptureNode.disconnect(); }catch(e){}
+          exportCaptureNode.port.onmessage = null;
+          exportCaptureNode = null;
+        }
+        if (exportScriptNode){
+          try{ masterGain.disconnect(exportScriptNode); }catch(e){}
+          try{ exportScriptNode.disconnect(); }catch(e){}
+          exportScriptNode.onaudioprocess = null;
+          exportScriptNode = null;
+        }
+        // هر چی توی صف مونده رو همین‌جا، یک‌جا خالی می‌کنیم (دیگه اهمیتی نداره چون پخش تموم شده)
+        while (pcmQueue.length){
+          const chunk = pcmQueue.shift();
+          const l16 = floatTo16BitPCM(chunk.left);
+          const r16 = floatTo16BitPCM(chunk.right);
+          const buf = exportMp3Encoder.encodeBuffer(l16, r16);
+          if (buf && buf.length > 0) exportChunks.push(new Int8Array(buf));
+        }
+        try{
+          const endBuf = exportMp3Encoder.flush();
+          if (endBuf && endBuf.length > 0) exportChunks.push(new Int8Array(endBuf));
+        }catch(e){}
+        const blob = new Blob(exportChunks, { type: 'audio/mp3' });
+        downloadBlob(blob, 'mix.mp3');
+        exportChunks = [];
+        exportMp3Encoder = null;
+        resolve();
+      } else {
+        exportMediaRecorder.onstop = () => {
+          const mime = exportMime || 'audio/webm';
+          const ext = mime.indexOf('webm') !== -1 ? 'webm' : (mime.indexOf('ogg') !== -1 ? 'ogg' : (mime.indexOf('mp4') !== -1 ? 'm4a' : 'webm'));
+          const blob = new Blob(exportChunks, { type: mime });
+          downloadBlob(blob, 'mix.' + ext);
+          exportChunks = [];
+          exportMediaRecorder = null;
+          resolve();
+        };
+        try{ exportMediaRecorder.stop(); }catch(e){ resolve(); }
+      }
+    });
+  }
+
+  function renderConvertList(){
+    convertList.innerHTML = '';
+    filesToConvert.forEach((f, i) => {
+      const li = document.createElement('li');
+      li.style.cursor = 'default';
+
+      const idx = document.createElement('span');
+      idx.className = 'idx';
+      idx.textContent = persianDigits(i + 1);
+
+      const nm = document.createElement('span');
+      nm.className = 'name';
+      nm.textContent = f.name;
+
+      const up = document.createElement('button');
+      up.className = 'row-btn'; up.title = 'انتقال به بالا'; up.textContent = '↑';
+      up.addEventListener('click', () => {
+        if (i === 0) return;
+        [filesToConvert[i], filesToConvert[i-1]] = [filesToConvert[i-1], filesToConvert[i]];
+        renderConvertList();
+      });
+
+      const down = document.createElement('button');
+      down.className = 'row-btn'; down.title = 'انتقال به پایین'; down.textContent = '↓';
+      down.addEventListener('click', () => {
+        if (i === filesToConvert.length - 1) return;
+        [filesToConvert[i], filesToConvert[i+1]] = [filesToConvert[i+1], filesToConvert[i]];
+        renderConvertList();
+      });
+
+      const remove = document.createElement('button');
+      remove.className = 'row-btn'; remove.title = 'حذف'; remove.textContent = '×';
+      remove.addEventListener('click', () => {
+        filesToConvert.splice(i, 1);
+        renderConvertList();
+        convertBtn.disabled = filesToConvert.length === 0;
+      });
+
+      li.append(idx, nm, up, down, remove);
+      convertList.appendChild(li);
+    });
+  }
+
+  dropzoneConvert.addEventListener('click', () => convertInput.click());
+  convertInput.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files).filter(f => f.type.startsWith('audio/'));
+    if (!files.length) return;
+    filesToConvert = filesToConvert.concat(files);
+    renderConvertList();
+    convertBtn.disabled = false;
+    convertInput.value = '';
+  });
+  ['dragover','dragenter'].forEach(evt => {
+    dropzoneConvert.addEventListener(evt, e => { e.preventDefault(); dropzoneConvert.classList.add('drag'); });
+  });
+  ['dragleave','drop'].forEach(evt => {
+    dropzoneConvert.addEventListener(evt, e => { e.preventDefault(); dropzoneConvert.classList.remove('drag'); });
+  });
+  dropzoneConvert.addEventListener('drop', e => {
+    const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('audio/'));
+    if (!files.length) return;
+    filesToConvert = filesToConvert.concat(files);
+    renderConvertList();
+    convertBtn.disabled = false;
+  });
+
+  convertBtn.addEventListener('click', async () => {
+    if (!filesToConvert.length || isExporting) return;
+    convertBtn.disabled = true;
+    convertStatus.textContent = 'در حال آماده‌سازی…';
+
+    const canUseMp3 = await loadLameJs();
+    exportUsesMp3Flag = canUseMp3;
+    if (!canUseMp3){
+      convertStatus.textContent = 'کتابخانه mp3 در دسترس نبود؛ فایل نهایی با فرمت مرورگر (قابل پخش با هر برنامه‌ای) ذخیره می‌شه.';
+      await new Promise(r => setTimeout(r, 60));
+    }
+
+    ensureAudioGraph();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    // پخشِ فعلی رو متوقف می‌کنیم و صف پخش رو موقتاً با آهنگ‌های انتخابی جایگزین می‌کنیم؛
+    // این‌جوری از همون موتور کراس‌فیدِ زنده استفاده می‌کنیم، بدون این‌که کل آهنگ‌ها رو یک‌جا توی حافظه نگه داریم
+    exportBackupTracks = tracks;
+    stopAll();
+    tracks = filesToConvert.map(f => ({ id: uidCounter++, name: f.name.replace(/\.[^/.]+$/, ''), url: URL.createObjectURL(f) }));
+    renderPlaylist();
+
+    startStreamingEncoder(canUseMp3);
+    isExporting = true;
+    convertStatus.textContent = 'در حال پخش و ذخیره‌ی میکس… چون باید کل مدت میکس واقعاً پخش بشه، طول می‌کشه؛ می‌تونی صفحه رو باز نگه داری تا تموم بشه.';
+
+    filesToConvert = [];
+    renderConvertList();
+
+    hardStart(0);
+  });
+
+  playBtn.addEventListener('click', () => {
+    if (!tracks.length || isPlaying) return;
+    const startIndex = currentTrackIndex >= 0 && currentTrackIndex < tracks.length ? currentTrackIndex : 0;
+    hardStart(startIndex);
+  });
+
+  prevBtn.addEventListener('click', () => {
+    if (!tracks.length) return;
+    const target = currentTrackIndex === -1 ? 0 : currentTrackIndex - 1;
+    if (target < 0){ statusLine.textContent = 'این اولین آهنگه.'; return; }
+    goToTrack(target);
+  });
+
+  nextBtn.addEventListener('click', () => {
+    if (!tracks.length) return;
+    const target = currentTrackIndex === -1 ? 0 : currentTrackIndex + 1;
+    if (target >= tracks.length){ statusLine.textContent = 'این آخرین آهنگه.'; return; }
+    goToTrack(target);
+  });
+
+  stopBtn.addEventListener('click', stopAll);
+
+})();
+</script>
+</body>
+</html>
