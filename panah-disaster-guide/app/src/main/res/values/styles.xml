@@ -1,0 +1,22 @@
+<resources>
+    <color name="ink">#183230</color>
+    <color name="muted">#5C706C</color>
+    <color name="paper">#F5F7F2</color>
+    <color name="card">#FFFFFF</color>
+    <color name="teal">#176B62</color>
+    <color name="teal_light">#DCEFEA</color>
+    <color name="coral">#B94336</color>
+    <color name="coral_light">#FCE9E4</color>
+    <color name="gold">#F1C56A</color>
+    <color name="line">#E0E8E2</color>
+    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">@color/teal</item>
+        <item name="android:statusBarColor">@color/paper</item>
+        <item name="android:navigationBarColor">@color/paper</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowBackground">@color/paper</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+</resources>
