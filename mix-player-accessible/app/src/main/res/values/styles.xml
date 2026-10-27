@@ -1,0 +1,18 @@
+<resources>
+    <color name="ink">#142B35</color>
+    <color name="muted">#475C66</color>
+    <color name="paper">#F4F7F8</color>
+    <color name="card">#FFFFFF</color>
+    <color name="blue">#005B9A</color>
+    <color name="blue_light">#DCEEFF</color>
+    <color name="gold">#FFD166</color>
+    <color name="line">#CFD9DE</color>
+    <style name="PlayerTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">@color/blue</item>
+        <item name="android:statusBarColor">@color/paper</item>
+        <item name="android:navigationBarColor">@color/paper</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowBackground">@color/paper</item>
+    </style>
+</resources>

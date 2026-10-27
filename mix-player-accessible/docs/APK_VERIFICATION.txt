@@ -1,0 +1,20 @@
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): false
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+Signer #1 certificate DN: C=US, O=Android, CN=Android Debug
+Signer #1 certificate SHA-256 digest: 257a177e2d3b68a736e5f9c4170b28749ae6f04f6c4fbca6a3c347ad0d88492a
+Signer #1 certificate SHA-1 digest: 16598009dacb22560b5b67653537499c3f99d8c6
+Signer #1 certificate MD5 digest: e6091531b7bd2c57bf2ba8e02e435170
+Signer #1 key algorithm: RSA
+Signer #1 key size (bits): 2048
+Signer #1 public key SHA-256 digest: bacb0c6cddd21167d21132da37f52829b32c5c00d69b007f271e2837ceb52009
+Signer #1 public key SHA-1 digest: 69dc0599c9d6f438a4f90359c4dde800e72667f9
+Signer #1 public key MD5 digest: 3def4d28659af35bc365e16e9f7c711f
+package: name='com.blinddroid.mixplayer.accessible' versionCode='1' versionName='2.0.0-accessible' platformBuildVersionName='15' platformBuildVersionCode='35' compileSdkVersion='35' compileSdkVersionCodename='15'
+application-label:'Mix Player دسترس‌پذیر'
+launchable-activity: name='com.blinddroid.mixplayer.MainActivity'  label='' icon=''
