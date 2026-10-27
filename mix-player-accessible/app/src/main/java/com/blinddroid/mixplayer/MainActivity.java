@@ -76,6 +76,8 @@ public final class MainActivity extends Activity {
     private String currentUri = "";
     private int sortMode;
     private String lastAnnouncedTitle = "";
+    private int audioScene = AudioSceneEffects.SCENE_OFF;
+    private int audioSceneIntensity = 75;
     private float displayedSpeed = 1f;
     private float displayedPitch = 1f;
     private int displayedRepeat;
@@ -96,6 +98,7 @@ public final class MainActivity extends Activity {
     private TextView repeatButton;
     private TextView shuffleButton;
     private TextView sleepButton;
+    private Button audioEffectsButton;
     private TextView playPauseButton;
     private TextView favoriteNowButton;
     private Button resumeButton;
@@ -165,6 +168,11 @@ public final class MainActivity extends Activity {
         skipMs = prefs.getInt("skip_ms", 15_000);
         sortMode = prefs.getInt("sort_mode", 0);
         announceTracks = prefs.getBoolean("announce_tracks", true);
+        audioScene = prefs.getInt("audio_scene", AudioSceneEffects.SCENE_OFF);
+        if (audioScene < AudioSceneEffects.SCENE_OFF || audioScene > AudioSceneEffects.SCENE_CAR) {
+            audioScene = AudioSceneEffects.SCENE_OFF;
+        }
+        audioSceneIntensity = Math.max(0, Math.min(100, prefs.getInt("audio_scene_intensity", 75)));
         loadFavorites();
         String saved = prefs.getString("folder_uri", "");
         if (!saved.trim().isEmpty()) selectedFolder = Uri.parse(saved);
@@ -380,6 +388,10 @@ public final class MainActivity extends Activity {
         pitchLabel = text("زیر و بمی ۱ برابر", 12, MUTED, false);
         pitchLabel.setGravity(Gravity.CENTER);
         panel.addView(pitchLabel);
+
+        audioEffectsButton = button(audioSceneButtonText(), audioSceneButtonDescription(), BLUE_LIGHT, BLUE);
+        audioEffectsButton.setOnClickListener(v -> showAudioEffectsDialog());
+        panel.addView(audioEffectsButton, margin(0, dp(4), 0, 0));
 
         LinearLayout lastRow = row();
         TextView skip = text("جلو/عقب: ۱۵ ثانیه", 12, MUTED, false);
@@ -626,6 +638,92 @@ public final class MainActivity extends Activity {
                         announce("تایمر خواب روی " + choices[which] + " تنظیم شد");
                     }
                 }).setNegativeButton("بستن", null).show();
+    }
+
+    private void showAudioEffectsDialog() {
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        content.setPadding(dp(20), dp(8), dp(20), dp(4));
+
+        TextView note = text("سالن کنسرت: بازتاب محیطی برای شبیه‌سازی فضای سالن. خودرو: رنگ‌آمیزی تُن صدا بر پایهٔ پاسخ معمول بلندگوهای کابین. این‌ها شبیه‌سازی‌اند، نه ضبط صدای یک سالن یا خودروی مشخص. اگر گوشی افکت نشست پخش را پشتیبانی نکند، صدا بدون افکت و بدون قطع‌شدن پخش می‌شود.", 14, MUTED, false);
+        note.setContentDescription(note.getText().toString());
+        content.addView(note, margin(0, 0, 0, dp(8)));
+
+        Button off = button("", "خاموش‌کردن افکت صوتی", WHITE, INK);
+        Button concert = button("", "فعال‌کردن افکت سالن کنسرت", WHITE, BLUE);
+        Button car = button("", "فعال‌کردن افکت خودرو", WHITE, BLUE);
+        content.addView(off, margin(0, dp(2), 0, dp(2)));
+        content.addView(concert, margin(0, dp(2), 0, dp(2)));
+        content.addView(car, margin(0, dp(2), 0, dp(8)));
+
+        TextView intensityLabel = text("شدت افکت: " + audioSceneIntensity + " درصد", 14, INK, true);
+        intensityLabel.setContentDescription("شدت افکت " + audioSceneIntensity + " درصد");
+        content.addView(intensityLabel);
+        SeekBar intensity = new SeekBar(this);
+        intensity.setMax(100);
+        intensity.setProgress(audioSceneIntensity);
+        intensity.setContentDescription("تنظیم شدت افکت سالن کنسرت یا خودرو از صفر تا صد درصد");
+        content.addView(intensity, margin(0, 0, 0, dp(8)));
+
+        Runnable updateChoices = () -> {
+            off.setText(audioScene == AudioSceneEffects.SCENE_OFF ? "فعال: خاموش" : "خاموش");
+            concert.setText(audioScene == AudioSceneEffects.SCENE_CONCERT ? "فعال: سالن کنسرت" : "سالن کنسرت");
+            car.setText(audioScene == AudioSceneEffects.SCENE_CAR ? "فعال: خودرو" : "خودرو");
+            off.setContentDescription(audioScene == AudioSceneEffects.SCENE_OFF ? "افکت صوتی اکنون خاموش است" : "خاموش‌کردن افکت صوتی");
+            concert.setContentDescription(audioScene == AudioSceneEffects.SCENE_CONCERT ? "افکت سالن کنسرت اکنون انتخاب شده است" : "فعال‌کردن افکت سالن کنسرت");
+            car.setContentDescription(audioScene == AudioSceneEffects.SCENE_CAR ? "افکت خودرو اکنون انتخاب شده است" : "فعال‌کردن افکت خودرو");
+        };
+        updateChoices.run();
+        off.setOnClickListener(v -> { selectAudioScene(AudioSceneEffects.SCENE_OFF); updateChoices.run(); });
+        concert.setOnClickListener(v -> { selectAudioScene(AudioSceneEffects.SCENE_CONCERT); updateChoices.run(); });
+        car.setOnClickListener(v -> { selectAudioScene(AudioSceneEffects.SCENE_CAR); updateChoices.run(); });
+        intensity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                intensityLabel.setText("شدت افکت: " + progress + " درصد");
+                intensityLabel.setContentDescription("شدت افکت " + progress + " درصد");
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) { }
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {
+                audioSceneIntensity = seekBar.getProgress();
+                prefs.edit().putInt("audio_scene_intensity", audioSceneIntensity).apply();
+                sendAudioSceneToService();
+            }
+        });
+
+        new AlertDialog.Builder(this).setTitle("افکت‌های صوتی")
+                .setView(content).setPositiveButton("بستن", null).show();
+    }
+
+    private void selectAudioScene(int scene) {
+        audioScene = scene;
+        prefs.edit().putInt("audio_scene", audioScene)
+                .putInt("audio_scene_intensity", audioSceneIntensity).apply();
+        if (audioEffectsButton != null) {
+            audioEffectsButton.setText(audioSceneButtonText());
+            audioEffectsButton.setContentDescription(audioSceneButtonDescription());
+        }
+        sendAudioSceneToService();
+    }
+
+    private void sendAudioSceneToService() {
+        Intent command = sendService(PlaybackService.ACTION_AUDIO_SCENE)
+                .putExtra("scene", audioScene).putExtra("intensity", audioSceneIntensity);
+        startService(command);
+    }
+
+    private String audioSceneButtonText() {
+        return "افکت صوتی: " + audioSceneName(audioScene);
+    }
+
+    private String audioSceneButtonDescription() {
+        return "افکت صوتی فعلی: " + audioSceneName(audioScene) + "؛ برای انتخاب افکت سالن کنسرت، خودرو یا خاموش دوبار ضربه بزنید";
+    }
+
+    private static String audioSceneName(int scene) {
+        if (scene == AudioSceneEffects.SCENE_CONCERT) return "سالن کنسرت";
+        if (scene == AudioSceneEffects.SCENE_CAR) return "خودرو";
+        return "خاموش";
     }
 
     private void showHelp() {

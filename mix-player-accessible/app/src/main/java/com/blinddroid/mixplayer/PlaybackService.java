@@ -41,6 +41,7 @@ public final class PlaybackService extends Service {
     public static final String ACTION_PITCH = "com.blinddroid.mixplayer.accessible.PITCH";
     public static final String ACTION_REPEAT = "com.blinddroid.mixplayer.accessible.REPEAT";
     public static final String ACTION_SHUFFLE = "com.blinddroid.mixplayer.accessible.SHUFFLE";
+    public static final String ACTION_AUDIO_SCENE = "com.blinddroid.mixplayer.accessible.AUDIO_SCENE";
     public static final String ACTION_SLEEP = "com.blinddroid.mixplayer.accessible.SLEEP";
     public static final String ACTION_SLEEP_END = "com.blinddroid.mixplayer.accessible.SLEEP_END";
     public static final String ACTION_STOP = "com.blinddroid.mixplayer.accessible.STOP";
@@ -65,6 +66,10 @@ public final class PlaybackService extends Service {
     private final ArrayList<String> queue = new ArrayList<>();
     private int index = -1;
     private MediaPlayer player;
+    private final AudioSceneEffects audioSceneEffects = new AudioSceneEffects();
+    private int audioScene = AudioSceneEffects.SCENE_OFF;
+    private int audioSceneIntensity = 75;
+    private boolean playerPrepared;
     private MediaSession mediaSession;
     private AudioManager audioManager;
     private AudioFocusRequest focusRequest;
@@ -90,6 +95,8 @@ public final class PlaybackService extends Service {
         repeatMode = saved.getInt("repeat", 0);
         shuffle = saved.getBoolean("shuffle", false);
         skipMs = saved.getInt("skip_ms", 15_000);
+        audioScene = clampAudioScene(saved.getInt("audio_scene", AudioSceneEffects.SCENE_OFF));
+        audioSceneIntensity = clamp(saved.getInt("audio_scene_intensity", 75), 0, 100);
         createNotificationChannel();
         mediaSession = new MediaSession(this, "BlindDroid Mix Player");
         mediaSession.setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS | MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS);
@@ -140,6 +147,9 @@ public final class PlaybackService extends Service {
         else if (ACTION_PITCH.equals(action)) setPitch(intent.getFloatExtra("value", 1f));
         else if (ACTION_REPEAT.equals(action)) setRepeat(intent.getIntExtra("value", 0));
         else if (ACTION_SHUFFLE.equals(action)) setShuffle(intent.getBooleanExtra("value", false));
+        else if (ACTION_AUDIO_SCENE.equals(action)) setAudioScene(
+                intent.getIntExtra("scene", AudioSceneEffects.SCENE_OFF),
+                intent.getIntExtra("intensity", audioSceneIntensity));
         else if (ACTION_SLEEP.equals(action)) setSleep(intent.getIntExtra("minutes", 0));
         else if (ACTION_SLEEP_END.equals(action)) setSleepAtEnd();
         return START_NOT_STICKY;
@@ -168,10 +178,13 @@ public final class PlaybackService extends Service {
                     .build());
             player.setDataSource(this, uri);
             player.setOnPreparedListener(mp -> {
+                playerPrepared = true;
                 applyPlaybackParams();
                 if (pendingResumeMs > 0 && pendingResumeMs < mp.getDuration()) mp.seekTo(pendingResumeMs);
                 pendingResumeMs = 0;
                 requestAudioFocus();
+                String sceneStatus = applyAudioSceneToPlayer(mp);
+                if (audioScene != AudioSceneEffects.SCENE_OFF && sceneStatus.contains("پشتیبانی")) announceState(sceneStatus);
                 mp.start();
                 updateSessionMetadata();
                 updateNotification();
@@ -316,6 +329,48 @@ public final class PlaybackService extends Service {
         publishState(true);
     }
 
+    private void setAudioScene(int requestedScene, int requestedIntensity) {
+        audioScene = clampAudioScene(requestedScene);
+        audioSceneIntensity = clamp(requestedIntensity, 0, 100);
+        getSharedPreferences("mix_player_accessible", MODE_PRIVATE).edit()
+                .putInt("audio_scene", audioScene)
+                .putInt("audio_scene_intensity", audioSceneIntensity)
+                .apply();
+
+        String status;
+        if (player != null && playerPrepared) {
+            status = applyAudioSceneToPlayer(player);
+        } else {
+            audioSceneEffects.release();
+            status = audioScene == AudioSceneEffects.SCENE_OFF
+                    ? "افکت صوتی خاموش شد"
+                    : "افکت " + audioSceneName(audioScene) + " برای نشست آهنگ بعدی آماده است";
+        }
+        announceState(status);
+    }
+
+    private String applyAudioSceneToPlayer(MediaPlayer target) {
+        try {
+            return audioSceneEffects.apply(target.getAudioSessionId(), audioScene, audioSceneIntensity);
+        } catch (RuntimeException e) {
+            audioSceneEffects.release();
+            return "پشتیبانی افکت " + audioSceneName(audioScene) + " در نشست صدای این دستگاه در دسترس نیست؛ پخش عادی ادامه دارد";
+        }
+    }
+
+    private static int clampAudioScene(int scene) {
+        return scene >= AudioSceneEffects.SCENE_OFF && scene <= AudioSceneEffects.SCENE_CAR
+                ? scene : AudioSceneEffects.SCENE_OFF;
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private static String audioSceneName(int scene) {
+        return scene == AudioSceneEffects.SCENE_CONCERT ? "سالن کنسرت" : "خودرو";
+    }
+
     private void setSkip(int value) {
         skipMs = Math.max(5_000, Math.min(30_000, value));
         getSharedPreferences("mix_player_accessible", MODE_PRIVATE).edit().putInt("skip_ms", skipMs).apply();
@@ -372,6 +427,8 @@ public final class PlaybackService extends Service {
 
     private void releasePlayer() {
         handler.removeCallbacks(ticker);
+        playerPrepared = false;
+        audioSceneEffects.release();
         if (player != null) {
             try { player.reset(); player.release(); } catch (Exception ignored) { }
             player = null;
